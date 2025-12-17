@@ -104,8 +104,13 @@ class MaliciousClient(fl.client.NumPyClient):
     def evaluate(self, parameters, config):
         self.model.set_weights(parameters)
         loss, acc = self.model.evaluate(self.X_test, self.y_test, verbose=0)
-        print(f"[Client {self.cid}] Eval => Loss: {loss:.4f}, Acc: {acc:.4f}")
-        return float(loss), len(self.y_test), {"accuracy": float(acc)}
+        # Calculate F1 Score
+        y_pred = np.argmax(self.model.predict(self.X_test, verbose=0), axis=1)
+        from sklearn.metrics import f1_score
+        f1 = f1_score(self.y_test, y_pred, average="macro")
+
+        print(f"[Client {self.cid}] Eval => Loss: {loss:.4f}, Acc: {acc:.4f}, F1: {f1:.4f}")
+        return float(loss), len(self.y_test), {"accuracy": float(acc), "f1": float(f1)}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

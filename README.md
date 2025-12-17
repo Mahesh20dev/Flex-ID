@@ -81,7 +81,44 @@ After training is complete, results are saved in the `results/` directory. You c
 python plot_history.py
 ```
 
-## 📊 Dataset Info
+## �️ Adversarial Attacks
+You can simulate attacks by replacing one or more normal clients with a malicious client.
+
+**1. Data Poisoning (Label Flipping):**
+Flips labels of malicious traffic to 'Benign', confusing the model.
+```bash
+# Run instead of normal client.py
+python client_attack.py --cid 0 --attack_type flip --scale 1.0
+```
+
+**2. Model Poisoning (Noise Injection):**
+Adds Gaussian noise to the trained weights before sending them to the server.
+```bash
+# Run instead of normal client.py
+python client_attack.py --cid 0 --attack_type noise --scale 0.5
+```
+
+## 🧠 Explainable AI (XAI)
+Understand why the model makes specific decisions using **SHAP (SHapley Additive exPlanations)**.
+
+This script loads a trained model (from valid weights) and generates a summary plot showing which network features contributed most to the detection of attacks.
+
+```bash
+# General usage (tries to find default weights)
+python explain_model.py
+
+# Explain a specific round from FedAvg
+python explain_model.py --round 10
+
+# Explain a specific weights file
+python explain_model.py --weights fedavgeachround/round-5-weights.pkl
+```
+
+**Output:** `shap_summary_plot.png` (Shows feature importance ranking).
+
+
+
+## �📊 Dataset Info
 The project uses the **CSE-CIC-IDS2018** dataset, focusing on relevant network traffic features for cloud environments.
 - **Raw Data**: `combined_ids2018_raw.csv`
 - **Processed Data**: `processed_data.csv` (Normalized and cleaned)

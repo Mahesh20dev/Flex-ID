@@ -18,7 +18,7 @@ def save_parameters(params, filename):
 def weighted_average(metrics: List[Tuple[int, Dict[str, Any]]]) -> Dict[str, Any]:
     # Aggregate accuracy and F1 using weighted average
     accuracies = [num_examples * m["accuracy"] for num_examples, m in metrics]
-    f1s = [num_examples * m["f1"] for num_examples, m in metrics]
+    f1s = [num_examples * m.get("f1", 0) for num_examples, m in metrics]
     examples = [num_examples for num_examples, _ in metrics]
     
     return {
