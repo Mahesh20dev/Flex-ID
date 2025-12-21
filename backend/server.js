@@ -27,6 +27,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Request Logger
+app.use((req, res, next) => {
+    console.log(`[Request] ${req.method} ${req.url}`);
+    next();
+});
+
+// Serve Data Folder (for partition downloads)
+app.use('/data', express.static(path.join(PROJECT_ROOT, 'data')));
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
