@@ -317,6 +317,17 @@ app.get('/api/check-status', (req, res) => {
     res.json({ running: Object.keys(runningProcesses) });
 });
 
+// 7. Serve React Frontend (Static)
+app.use(express.static(path.join(PROJECT_ROOT, 'frontend', 'dist')));
+
+// 8. Catch-All Route for React Router (must be last)
+app.get('*', (req, res) => {
+    // If not API/results/images, serve index.html
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/results') && !req.path.startsWith('/images')) {
+        res.sendFile(path.join(PROJECT_ROOT, 'frontend', 'dist', 'index.html'));
+    }
+});
+
 server.listen(PORT, () => {
     console.log(`Backend running on http://localhost:${PORT}`);
 });
