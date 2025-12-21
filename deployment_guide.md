@@ -1,26 +1,7 @@
-# How to Deploy Flex-ID
+# Flex-ID Deployment & Sharing Guide
 
-The easiest way to deploy this project is using **Docker**. This allows the Node.js Backend and Python ML Engine to run in the same environment.
-
-## Option A: Deploy to Render (Free/Cheap)
-Render is a cloud platform that supports Docker natively.
-
-1.  **Push to GitHub**: Ensure your latest code is pushed to your GitHub repository.
-2.  **Create Account**: Go to [render.com](https://render.com) and create an account.
-3.  **New Web Service**:
-    *   Click "New +" -> "Web Service".
-    *   Connect your GitHub repository.
-4.  **Configuration**:
-    *   **Runtime**: Select **Docker**.
-    *   **Region**: Nearest to you (e.g., Singapore, Oregon).
-    *   **Branch**: `main` (or your active branch).
-    *   **Plan**: Free (Note: The Free plan might be slow for Training, a paid plan is better for ML workloads).
-5.  **Environment Variables**:
-    *   Add any secrets if you have them (e.g., if you add DB credentials later).
-6.  **Deploy**: Click "Create Web Service". Render will build the Docker image (this takes ~5-10 mins) and start it.
-
-## Option B: Run Locally with Docker
-If you have Docker Desktop installed:
+## 1. Quick Start (Local)
+If you just want to run the project on your machine:
 
 1.  **Build the Image**:
     ```bash
@@ -30,8 +11,44 @@ If you have Docker Desktop installed:
     ```bash
     docker run -p 5000:5000 flex-id
     ```
-3.  **Access App**: Open `http://localhost:5000` in your browser.
+3.  **Open App**: Go to `http://localhost:5000`.
 
-## Notes
-- **Data Persistence**: On unpaid container hosting (like Render Free), the filesystem is ephemeral. If the container restarts, `results/` and uploaded datasets might be lost. To fix this, you would need to mount a **Persistent Disk** (Render Paid Feature) or use cloud storage (S3).
-- **Performance**: ML training (TensorFlow) is heavy. A basic free tier might run out of memory (RAM). If clients crash with OOM (Out Of Memory), try reducing `--batch_size` in the manual controls page (e.g., set to 32 or 64).
+---
+
+## 2. How to Share with a Friend
+To let a friend run this on their system, they don't need to install Python or Node.js. They only need **Docker Desktop**.
+
+### Step A: You (The Owner)
+1.  Ensure your code is pushed to GitHub:
+    ```bash
+    git push origin main
+    ```
+2.  Send your **GitHub Repository URL** to your friend.
+
+### Step B: Your Friend
+1.  **Install Docker Desktop**: Download and install from [docker.com](https://www.docker.com/products/docker-desktop/).
+2.  **Clone the Repo**:
+    ```bash
+    git clone <YOUR_GITHUB_REPO_URL>
+    cd 7SemProject
+    ```
+3.  **Build & Run**:
+    ```bash
+    docker build -t flex-id .
+    docker run -p 5000:5000 flex-id
+    ```
+4.  That's it! They can now access the full app at `http://localhost:5000`.
+
+---
+
+## 3. Cloud Deployment (Render)
+To make it accessible via a public URL (e.g., `https://flex-id.onrender.com`):
+
+1.  Go to [render.com](https://render.com).
+2.  Create a **New Web Service**.
+3.  Connect your GitHub repository.
+4.  Select **Docker** as the Runtime.
+5.  Click **Deploy**.
+
+**Note on Data:**
+For cloud deployment, if you want to keep the training history even after the server restarts, you must upgrade to a paid plan and add a "Persistent Disk". On the free plan, data wipes on restart.
