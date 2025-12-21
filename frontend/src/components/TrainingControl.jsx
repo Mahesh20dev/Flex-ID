@@ -3,8 +3,8 @@ import axios from 'axios';
 import { Play, Square, Terminal, ShieldAlert, BadgeInfo, FileImage, Activity, FileJson, BarChart, CheckCircle, Download, RefreshCw, History } from 'lucide-react';
 import NetworkVisualizer from './NetworkVisualizer';
 
-const API_URL = 'http://localhost:5000/api';
-const IMG_BASE_URL = 'http://localhost:5000/results';
+const API_URL = '/api';
+const IMG_BASE_URL = '/results';
 
 export default function TrainingControl() {
     // Manual Commands State
@@ -140,7 +140,7 @@ export default function TrainingControl() {
                     {files.map((file, idx) => (
                         <div key={idx} className="min-w-[160px] bg-slate-800 p-3 rounded-lg border border-white/5 hover:border-indigo-500/50 transition-colors group relative">
                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <a href={`http://localhost:5000/results/${folder}/${file.name}`} download className="p-1.5 bg-indigo-600 rounded-md text-white hover:bg-indigo-500 block">
+                                <a href={`/results/${folder}/${file.name}`} download className="p-1.5 bg-indigo-600 rounded-md text-white hover:bg-indigo-500 block">
                                     <Download className="w-3 h-3" />
                                 </a>
                             </div>
@@ -169,7 +169,7 @@ export default function TrainingControl() {
             </div>
             {exists && (
                 <a
-                    href={`http://localhost:5000/results/${name}`}
+                    href={`/results/${name}`}
                     download
                     className="p-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors shadow-lg"
                     title="Download History"

@@ -11,7 +11,7 @@ import {
     Info
 } from 'lucide-react';
 
-const IMG_BASE = 'http://localhost:5000/results';
+const IMG_BASE = '/results';
 
 export default function XAIPage() {
     const [imageKey, setImageKey] = useState(Date.now());

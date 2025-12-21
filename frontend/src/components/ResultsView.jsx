@@ -11,8 +11,8 @@ import {
     FileText
 } from 'lucide-react';
 
-const IMG_BASE = 'http://localhost:5000/results';
-const JSON_BASE = 'http://localhost:5000/results';
+const IMG_BASE = '/results';
+const JSON_BASE = '/results';
 
 const ImageModal = ({ src, isOpen, onClose }) => {
     if (!isOpen) return null;
