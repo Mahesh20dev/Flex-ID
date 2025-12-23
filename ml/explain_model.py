@@ -5,134 +5,148 @@ import pickle
 import os
 import sys
 import matplotlib
-matplotlib.use('Agg') # Safe for non-interactive environments
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-# Import your model
-try:
-    from model import create_dnn_model
-except ImportError:
-    sys.exit("[ERR] Critical Error: 'model.py' not found.")
+from model import create_dnn_model
 
-# --- CONFIGURATION ---
-import argparse
+# ================================
+# FEDERATED SHAP EXPLAINER
+# ================================
 
-# --- CONFIGURATION (Defaults) ---
-DEFAULT_WEIGHTS_PATH = "results/fedavgeachround/round-10-weights.pkl" 
-DATA_PATH = "data/processed_data.csv"
-LE_PATH = "data/label_encoder.pkl"
+class FederatedSHAP:
+    def __init__(self, weights_path, data_path, le_path, num_clients=4):
+        self.weights_path = weights_path
+        self.data_path = data_path
+        self.le_path = le_path
+        self.num_clients = num_clients
 
-def run_explanation(round_num=None, weights_file=None, output_file=None):
-    # Determine weights path
-    if weights_file:
-        weights_path = weights_file
-    elif round_num:
-        # Try both folders
-        p1 = f"results/fedavgeachround/round-{round_num}-weights.pkl"
-        p2 = f"results/fedproxeachround/round-{round_num}-weights.pkl"
-        if os.path.exists(p1): weights_path = p1
-        elif os.path.exists(p2): weights_path = p2
+        self.model = self._load_model()
+        self.feature_names = self._load_feature_names()
+
+    # ------------------------------
+    def _load_model(self):
+        print(f"[XAI] Loading model from {self.weights_path}")
+
+        with open(self.le_path, "rb") as f:
+            le = pickle.load(f)
+
+        df = pd.read_csv(self.data_path)
+        target_col = [c for c in df.columns if c.lower() in ["label", "class", "attack_cat"]][0]
+        X_dim = df.drop(columns=[target_col]).shape[1]
+
+        model = create_dnn_model(X_dim, len(le.classes_))
+
+        with open(self.weights_path, "rb") as f:
+            weights = pickle.load(f)
+        model.set_weights(weights)
+
+        self.le = le
+        return model
+
+    # ------------------------------
+    def _load_feature_names(self):
+        df = pd.read_csv(self.data_path, nrows=1)
+        return [c for c in df.columns if c.lower() not in ["label", "class", "attack_cat"]]
+
+    # ------------------------------
+    def load_client_data(self, cid):
+        with open(f"client_partition_{cid}.pkl", "rb") as f:
+            (_, _), (X_test, y_test) = pickle.load(f)
+        return X_test.astype(np.float32), y_test
+
+    # ------------------------------
+    def explain_client(self, cid, bg_size=50, explain_size=10, prefix=""):
+        print(f"[Client {cid}] Running SHAP explanation")
+
+        X_test, _ = self.load_client_data(cid)
+
+        bg = X_test[np.random.choice(len(X_test), bg_size, replace=False)]
+        samples = X_test[:explain_size]
+
+        def predict_fn(x):
+            return self.model.predict(x, verbose=0)
+
+        explainer = shap.KernelExplainer(predict_fn, bg)
+        shap_values = explainer.shap_values(samples)
+
+        # Use attack class
+        if isinstance(shap_values, list):
+            shap_vals = shap_values[1]
         else:
-            print(f"[ERR] Weights for round {round_num} not found in fedavg/fedprox folders.")
-            return
-    else:
-        weights_path = DEFAULT_WEIGHTS_PATH
+            shap_vals = shap_values
 
-    print(f"--- 1. Loading Global Model from: {weights_path} ---")
-    if not os.path.exists(DATA_PATH) or not os.path.exists(LE_PATH):
-        sys.exit("[ERR] Error: Data or Label Encoder not found.")
-    
-    if not os.path.exists(weights_path):
-        sys.exit(f"[ERR] Error: Weights file not found: {weights_path}")
+        # Save local plot
+        os.makedirs("results", exist_ok=True)
+        out_path = f"results/{prefix}_client_{cid}_shap.png"
 
-    df = pd.read_csv(DATA_PATH)
-    
-    # Load Encoder
-    with open(LE_PATH, "rb") as f:
-        le = pickle.load(f)
-    print(f"[OK] Classes: {len(le.classes_)}")
+        plt.figure()
+        shap.summary_plot(
+            shap_vals,
+            samples,
+            feature_names=self.feature_names,
+            show=False
+        )
+        plt.savefig(out_path, bbox_inches="tight")
+        plt.close()
 
-    # Identify Label Column
-    target_col = None
-    for name in ['label', 'Label', 'class', 'Class', 'attack_cat']:
-        if name in df.columns:
-            target_col = name
-            break
-    if not target_col: target_col = df.columns[-1]
+        print(f"[Client {cid}] Saved local SHAP → {out_path}")
 
-    # Clean Data (Match Encoder)
-    df[target_col] = df[target_col].astype(str)
-    valid_labels = set([str(x) for x in le.classes_])
-    df = df[df[target_col].isin(valid_labels)]
-    
-    # Safe Transform
-    def safe_transform(x):
-        try: return le.transform([x])[0]
-        except: return 0
-    df[target_col] = df[target_col].apply(safe_transform)
+        # Return importance vector only (privacy preserving)
+        return np.mean(np.abs(shap_vals), axis=0)
 
-    # Prepare X (Features) and y (Labels)
-    X = df.drop(columns=[target_col])
-    feature_names = X.columns.tolist()
-    X_values = X.values.astype(np.float32)
+    # ------------------------------
+    def aggregate_global(self, client_vectors, prefix=""):
+        print("\n[Server] Aggregating federated SHAP values")
 
-    # Sample Data (Background = 50, Test = 10)
-    # Using small numbers because KernelExplainer is slow but accurate
-    background = X_values[np.random.choice(X_values.shape[0], 50, replace=False)]
-    to_explain = X_values[np.random.choice(X_values.shape[0], 10, replace=False)]
+        global_imp = np.mean(client_vectors, axis=0)
+        global_imp = 100 * global_imp / np.max(global_imp)
 
-    print(f"--- 2. Building Model & Loading Weights ---")
-    model = create_dnn_model(X.shape[1], len(le.classes_))
-    with open(weights_path, "rb") as f:
-        weights = pickle.load(f)
-    model.set_weights(weights)
+        idx = np.argsort(global_imp)[::-1][:15]
+        labels = [self.feature_names[i] for i in idx]
+        values = global_imp[idx]
 
-    # --- 3. Wrapper Function (The Fix for TF Issues) ---
-    def model_predict(data):
-        return model.predict(data, verbose=0)
+        plt.figure(figsize=(10, 6))
+        plt.barh(range(len(values)), values)
+        plt.yticks(range(len(values)), labels)
+        plt.xlabel("Aggregated SHAP Importance (%)")
+        plt.title("Federated Global Feature Importance")
+        plt.gca().invert_yaxis()
 
-    print("--- 3. Running SHAP (KernelExplainer) ---")
-    print("[INFO] Using KernelExplainer (Robust mode).")
-    
-    explainer = shap.KernelExplainer(model_predict, background)
-    shap_values = explainer.shap_values(to_explain)
+        out_path = f"results/{prefix}_global_shap.png"
+        plt.savefig(out_path, bbox_inches="tight")
+        plt.close()
 
-    # --- 4. Generate Plot ---
-    print("\n[PLOT] Generating Summary Plot...")
-    
-    # Handle Multi-class output (SHAP returns list of arrays)
-    if isinstance(shap_values, list):
-         # Pick the class with highest importance or just the Attack class (usually index 1)
-         class_idx = 1 if len(shap_values) > 1 else 0
-         shap_data = shap_values[class_idx]
-         print(f"   -> Plotting for Class Index {class_idx} ({le.classes_[class_idx]})")
-    else:
-        shap_data = shap_values
+        print(f"[Server] Saved global SHAP → {out_path}")
 
-    plt.figure()
-    shap.summary_plot(shap_data, to_explain, feature_names=feature_names, plot_type="bar", show=False)
-    
-    # Ensure results directory exists
-    if not os.path.exists("results"):
-        os.makedirs("results")
+# ================================
+# RUN DEMO (FedAvg / FedProx)
+# ================================
 
-    # Determine Output Name
-    if output_file:
-        out_name = output_file
-    else:
-        out_name = "results/shap_summary.png"
-        if round_num:
-            out_name = f"results/shap_summary_round_{round_num}.png"
-        
-    plt.savefig(out_name, bbox_inches='tight')
-    plt.close()
-    print(f"[DONE] Saved XAI Plot: {out_name}")
+def run():
+    models = {
+        "FedAvg": "results/fedavgeachround/round-10-weights.pkl",
+        "FedProx": "results/fedproxeachround/round-10-weights.pkl"
+    }
+
+    for name, path in models.items():
+        if not os.path.exists(path):
+            print(f"[WARN] {name} weights not found, skipping.")
+            continue
+
+        print(f"\n==== Explaining {name} ====")
+        explainer = FederatedSHAP(
+            weights_path=path,
+            data_path="data/processed_data.csv",
+            le_path="data/label_encoder.pkl"
+        )
+
+        client_updates = []
+        for cid in range(4):
+            vec = explainer.explain_client(cid, prefix=name)
+            client_updates.append(vec)
+
+        explainer.aggregate_global(client_updates, prefix=name)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--round", type=int, help="Round number to explain (looks in fedavg/fedprox folders)")
-    parser.add_argument("--weights", type=str, help="Direct path to weights file")
-    parser.add_argument("--output", type=str, help="Output path for the plot image")
-    args = parser.parse_args()
-    
-    run_explanation(args.round, args.weights, args.output)
+    run()

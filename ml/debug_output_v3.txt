@@ -1,0 +1,45 @@
+2025-12-23 11:09:27.172321: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+2025-12-23 11:09:30.039540: I tensorflow/core/util/port.cc:153] oneDNN custom operations are on. You may see slightly different numerical results due to floating-point round-off errors from different computation orders. To turn them off, set the environment variable `TF_ENABLE_ONEDNN_OPTS=0`.
+C:\Users\ycmah\AppData\Local\Programs\Python\Python311\Lib\site-packages\keras\src\export\tf2onnx_lib.py:8: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.
+  if not hasattr(np, "object"):
+2025-12-23 11:09:33.290594: I tensorflow/core/platform/cpu_feature_guard.cc:210] This TensorFlow binary is optimized to use available CPU instructions in performance-critical operations.
+To enable the following instructions: SSE3 SSE4.1 SSE4.2 AVX AVX2 AVX_VNNI FMA, in other operations, rebuild TensorFlow with the appropriate compiler flags.
+
+==== Explaining FedAvg ====
+[XAI] Loading model from ../results/fedavgeachround/round-10-weights.pkl
+[Client 0] Running SHAP explanation
+  0%|          | 0/2 [00:00<?, ?it/s] 50%|#####     | 1/2 [00:00<00:00,  1.67it/s]100%|##########| 2/2 [00:01<00:00,  1.86it/s]100%|##########| 2/2 [00:01<00:00,  1.83it/s]
+[DEBUG] shap_vals shape: (2, 29, 13)
+[Client 0] Saved local SHAP -> ../results/FedAvg_client_0_shap.png
+
+[Server] Aggregating federated SHAP values
+[DEBUG] idx type: <class 'numpy.ndarray'>
+[DEBUG] idx values: [[ 4 11  2  8  9  7  1  3 12 10  5  6  0]
+ [ 4 11  1  8 12  5  2  7  6  9  3  0 10]
+ [ 4 11  2  9  1  7 12  8  5  0  6  3 10]
+ [ 1  6  5  4 11 12  8  7  2  9  3  0 10]
+ [ 0  1  2  3  4  5  6  7  8  9 10 11 12]
+ [ 0  1  2  3  4  5  6  7  9 10 11 12  8]
+ [ 7  4  9 12 11 10  8  2  3  1  0  5  6]
+ [ 3  4  7 11  2  8  9 12  1  0  6 10  5]
+ [ 4 11  2  3 12  5  7  8  1  6 10  9  0]
+ [ 3  4 11  2 12  5  7  1  0  8  6 10  9]
+ [ 0  3  5  4  6  7 10  8 11  2 12  9  1]
+ [ 0  1  2  4  6  5  7  8 10  9 11 12  3]
+ [ 4 11  3  2  7  9  8  1 12 10  5  0  6]
+ [ 0  1  3  4  7  6 10  8 11 12  2  9  5]
+ [ 0  1  5  4  7 10  9  8 12 11  3  2  6]]
+[DEBUG] feature_names type: <class 'list'>
+[DEBUG] feature_names len: 29
+Traceback (most recent call last):
+  File "C:\Users\ycmah\Desktop\7SemProject\ml\explain_model.py", line 160, in <module>
+    run()
+  File "C:\Users\ycmah\Desktop\7SemProject\ml\explain_model.py", line 157, in run
+    explainer.aggregate_global(client_updates, prefix=name)
+  File "C:\Users\ycmah\Desktop\7SemProject\ml\explain_model.py", line 114, in aggregate_global
+    labels = [self.feature_names[int(i)] for i in idx]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\ycmah\Desktop\7SemProject\ml\explain_model.py", line 114, in <listcomp>
+    labels = [self.feature_names[int(i)] for i in idx]
+                                 ^^^^^^
+TypeError: only length-1 arrays can be converted to Python scalars
